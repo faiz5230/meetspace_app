@@ -2,7 +2,7 @@
 date_default_timezone_set('Asia/Jakarta');
 
 define('APP_NAME', 'MeetSpace');
-define('BASE_URL', 'http://localhost/meetspace_app');
+define('BASE_URL', 'http://192.168.0.28/meetspace_app');
 
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'meetspace_db');

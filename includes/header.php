@@ -52,6 +52,10 @@
       <a class="nav-link mb-2" href="<?= BASE_URL ?>/admin/bookings.php">
         <i class="bi bi-calendar-check"></i> Booking
       </a>
+	  
+	  <a class="nav-link mb-2" href="<?= BASE_URL ?>/booking_create.php">
+		<i class="bi bi-calendar-plus"></i> Booking Room
+	  </a>
 
       <a class="nav-link mb-2" href="<?= BASE_URL ?>/admin/calendar.php">
         <i class="bi bi-calendar3"></i> Kalender

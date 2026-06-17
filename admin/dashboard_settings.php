@@ -29,31 +29,76 @@ function save_setting($key, $value) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
+    $meetingStartSound = isset($_POST['meeting_start_sound']) ? '1' : '0';
+    $meetingEndSound   = isset($_POST['meeting_end_sound']) ? '1' : '0';
+
+    save_setting('meeting_start_sound', $meetingStartSound);
+    save_setting('meeting_end_sound', $meetingEndSound);
     save_setting('app_name', $_POST['app_name']);
 
     if (!empty($_FILES['public_logo']['name'])) {
-        $ext = pathinfo($_FILES['public_logo']['name'], PATHINFO_EXTENSION);
+        $ext = strtolower(pathinfo($_FILES['public_logo']['name'], PATHINFO_EXTENSION));
         $file = 'logo_' . time() . '.' . $ext;
-        move_uploaded_file($_FILES['public_logo']['tmp_name'], $uploadDir . $file);
+
+        move_uploaded_file(
+            $_FILES['public_logo']['tmp_name'],
+            $uploadDir . $file
+        );
+
         save_setting('public_logo', $file);
     }
 
     if (!empty($_FILES['public_background']['name'])) {
-        $ext = pathinfo($_FILES['public_background']['name'], PATHINFO_EXTENSION);
+        $ext = strtolower(pathinfo($_FILES['public_background']['name'], PATHINFO_EXTENSION));
         $file = 'background_' . time() . '.' . $ext;
-        move_uploaded_file($_FILES['public_background']['tmp_name'], $uploadDir . $file);
+
+        move_uploaded_file(
+            $_FILES['public_background']['tmp_name'],
+            $uploadDir . $file
+        );
+
         save_setting('public_background', $file);
     }
-	if (!empty($_FILES['book_now_image']['name'])) {
-		$ext = pathinfo($_FILES['book_now_image']['name'], PATHINFO_EXTENSION);
-		$file = 'book_now_' . time() . '.' . $ext;
 
-		move_uploaded_file(
-        $_FILES['book_now_image']['tmp_name'],
-        $uploadDir . $file
-		);
+    if (!empty($_FILES['book_now_image']['name'])) {
+        $ext = strtolower(pathinfo($_FILES['book_now_image']['name'], PATHINFO_EXTENSION));
+        $file = 'book_now_' . time() . '.' . $ext;
 
-		save_setting('book_now_image', $file);
+        move_uploaded_file(
+            $_FILES['book_now_image']['tmp_name'],
+            $uploadDir . $file
+        );
+
+        save_setting('book_now_image', $file);
+    }
+
+    if (!empty($_FILES['meeting_sound_file']['name'])) {
+        $ext = strtolower(pathinfo($_FILES['meeting_sound_file']['name'], PATHINFO_EXTENSION));
+
+        if (in_array($ext, ['mp3', 'wav', 'ogg'])) {
+            $file = 'meeting_sound_' . time() . '.' . $ext;
+
+            move_uploaded_file(
+                $_FILES['meeting_sound_file']['tmp_name'],
+                $uploadDir . $file
+            );
+
+            save_setting('meeting_sound_file', $file);
+        }
+    }
+	if (!empty($_FILES['meeting_icon']['name'])) {
+		$ext = strtolower(pathinfo($_FILES['meeting_icon']['name'], PATHINFO_EXTENSION));
+
+    if (in_array($ext, ['png', 'jpg', 'jpeg', 'webp', 'gif'])) {
+        $file = 'meeting_icon_' . time() . '.' . $ext;
+
+        move_uploaded_file(
+            $_FILES['meeting_icon']['tmp_name'],
+            $uploadDir . $file
+        );
+
+        save_setting('meeting_icon', $file);
+		}
 	}
 
     audit_log('UPDATE_DASHBOARD_SETTING', 'Update setting dashboard public');
@@ -64,6 +109,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $appName = get_setting('app_name', 'MeetSpace');
 $logo = get_setting('public_logo');
 $background = get_setting('public_background');
+$bookNowImage = get_setting('book_now_image');
+$meetingSoundFile = get_setting('meeting_sound_file');
 
 $rooms = $pdo->query("SELECT * FROM rooms ORDER BY name")->fetchAll();
 ?>
@@ -83,6 +130,7 @@ $rooms = $pdo->query("SELECT * FROM rooms ORDER BY name")->fetchAll();
             <div class="col-md-6">
                 <label class="form-label">Logo</label>
                 <input class="form-control" type="file" name="public_logo" accept="image/*">
+
                 <?php if ($logo): ?>
                     <div class="mt-2">
                         <img src="<?= $uploadUrl . e($logo) ?>" style="max-height:70px">
@@ -93,26 +141,106 @@ $rooms = $pdo->query("SELECT * FROM rooms ORDER BY name")->fetchAll();
             <div class="col-md-12">
                 <label class="form-label">Background Dashboard</label>
                 <input class="form-control" type="file" name="public_background" accept="image/*">
+
                 <?php if ($background): ?>
                     <div class="mt-2">
                         <img src="<?= $uploadUrl . e($background) ?>" style="max-height:140px;border-radius:12px">
                     </div>
                 <?php endif; ?>
             </div>
-			<div class="col-md-12">
-				<label class="form-label">Gambar / Logo Book Now</label>
-				<input class="form-control" type="file" name="book_now_image" accept="image/*">
 
-			<?php
-				$bookNowImage = get_setting('book_now_image');
-			?>
+            <div class="col-md-12">
+                <div class="card mt-2">
+                    <div class="card-body">
 
-			<?php if ($bookNowImage): ?>
-			<div class="mt-2">
-            <img src="<?= $uploadUrl . e($bookNowImage) ?>" style="max-height:100px;border-radius:12px">
-			</div>
-			<?php endif; ?>
-			</div>
+                        <h5 class="mb-3">
+                            Pengaturan Suara Meeting
+                        </h5>
+
+                        <div class="form-check form-switch mb-3">
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                name="meeting_start_sound"
+                                value="1"
+                                <?= get_setting('meeting_start_sound', '1') ? 'checked' : '' ?>>
+
+                            <label class="form-check-label">
+                                Bunyi saat meeting dimulai
+                            </label>
+                        </div>
+
+                        <div class="form-check form-switch mb-3">
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                name="meeting_end_sound"
+                                value="1"
+                                <?= get_setting('meeting_end_sound', '1') ? 'checked' : '' ?>>
+
+                            <label class="form-check-label">
+                                Bunyi saat meeting selesai
+                            </label>
+                        </div>
+
+                        <div class="mt-3">
+                            <label class="form-label">
+                                Upload Suara Meeting
+                            </label>
+
+                            <input
+                                class="form-control"
+                                type="file"
+                                name="meeting_sound_file"
+                                accept="audio/mpeg,audio/wav,audio/ogg">
+
+                            <?php if ($meetingSoundFile): ?>
+                                <div class="mt-2">
+                                    <audio controls>
+                                        <source src="<?= $uploadUrl . e($meetingSoundFile) ?>">
+                                        Browser tidak mendukung audio.
+                                    </audio>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+						<div class="mt-3">
+							<label class="form-label">
+							Upload Icon In Meeting
+							</label>
+
+							<input
+							class="form-control"
+							type="file"
+							name="meeting_icon"
+							accept="image/*">
+
+							<?php
+							$meetingIcon = get_setting('meeting_icon');
+							?>
+
+							<?php if ($meetingIcon): ?>
+						<div class="mt-2">
+							<img
+							src="<?= $uploadUrl . e($meetingIcon) ?>"
+							style="max-height:50px;border-radius:8px">
+						</div>
+						<?php endif; ?>
+					</div>
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-12">
+                <label class="form-label">Gambar / Logo Book Now</label>
+                <input class="form-control" type="file" name="book_now_image" accept="image/*">
+
+                <?php if ($bookNowImage): ?>
+                    <div class="mt-2">
+                        <img src="<?= $uploadUrl . e($bookNowImage) ?>" style="max-height:100px;border-radius:12px">
+                    </div>
+                <?php endif; ?>
+            </div>
 
             <div class="col-12">
                 <button class="btn btn-success">Simpan Setting</button>

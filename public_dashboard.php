@@ -26,6 +26,10 @@ $appName = get_public_setting('app_name', 'MeetSpace');
 $logo = get_public_setting('public_logo');
 $background = get_public_setting('public_background');
 $bookNowImage = get_public_setting('book_now_image');
+$meetingSoundFile = get_public_setting('meeting_sound_file');
+$meetingStartSound =get_public_setting('meeting_start_sound', '1');
+$meetingEndSound =get_public_setting('meeting_end_sound', '1');
+$meetingIcon = get_public_setting('meeting_icon');
 
 $settingUploadUrl = 'uploads/settings/';
 
@@ -61,7 +65,7 @@ $stmt = $pdo->prepare("
     LEFT JOIN users u ON u.id = b.user_id
     WHERE b.room_id = ?
     AND b.booking_date = CURDATE()
-    AND b.status IN ('pending','approved')
+    AND b.status IN ('approved')
     ORDER BY b.start_time ASC
 ");
 
@@ -93,16 +97,9 @@ if ($room['status'] === 'closed') {
     $statusClass = 'meeting';
 }
 
-$qrLink =
-    'http://' .
-    $_SERVER['HTTP_HOST'] .
-    dirname($_SERVER['PHP_SELF']) .
-    '/booking_create.php?room_id=' .
-    $room['id'];
+$qrLink = 'http://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/login.php';
 
-$qrImage =
-    'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' .
-    urlencode($qrLink);
+$qrImage = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' . urlencode($qrLink);
 
 $bgImage = $background
     ? $settingUploadUrl . $background
@@ -187,9 +184,10 @@ body::before {
 }
 
 .logo img {
-    max-height: 90px;
-    max-width: 260px;
-    object-fit: contain;
+ width: 190px;
+ height: auto;
+ max-height: none;
+ object-fit: contain;
 }
 
 .room-title {
@@ -232,7 +230,7 @@ body::before {
 }
 
 .location {
-    margin-top: 45px;
+    margin-top: 10px;
 }
 
 .location h2 {
@@ -249,9 +247,11 @@ body::before {
 }
 
 .bottom {
-    display: flex;
-    align-items: center;
-    gap: 55px;
+ display: flex;
+ align-items: flex-start;
+ justify-content: flex-start;
+ gap: 10px;
+ margin-top: 10px;
 }
 
 .book-btn {
@@ -281,32 +281,43 @@ body::before {
 }
 
 .qr-box {
-    background: #fff;
-    padding: 14px;
-    border-radius: 18px;
-    color: #111;
-    text-align: center;
-    font-weight: 900;
+ background: #fff;
+ padding: 10px 10px 7px;
+ border-radius: 0px;
+ color: #111;
+ text-align: center;
+ font-weight: 900;
+ font-size: 13px;
+ line-height: 1;
+ border: 3px solid rgba(0,0,0,.18);
+ box-shadow: 0 4px 10px rgba(0,0,0,.12);
+ overflow: hidden;
 }
 
 .qr-box img {
-    width: 160px;
-    height: 160px;
-    display: block;
+ width: 135px;
+ height: 135px;
+ display: block;
+ margin: 0 auto 5px;
+ object-fit: contain;
 }
 
 .right {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+ display: flex;
+ align-items: stretch;
+ justify-content: center;
+ height: 100%;
 }
 
 .panel {
-    width: 100%;
-    max-width: 620px;
-    background: rgba(255,255,255,.82);
-    color: #111;
-    min-height: 78vh;
+ width: 100%;
+ max-width: 620px;
+ background: rgba(255,255,255,.82);
+ color: #111;
+ height: calc(100vh - 110px);
+ min-height: unset;
+ display: flex;
+ flex-direction: column;
 }
 
 .clock-box {
@@ -328,7 +339,8 @@ body::before {
 }
 
 .schedule {
-    padding: 22px 30px;
+ padding: 22px 30px;
+ flex: 1;
 }
 
 .item {
@@ -417,6 +429,12 @@ body::before {
         max-width: 100%;
     }
 }
+.book-now-img {
+ width: 400px;
+ height: auto;
+ object-fit: contain;
+ margin-left: -50px;
+}
 </style>
 </head>
 
@@ -450,14 +468,28 @@ body::before {
                         <div>Ready</div>
                     <?php endif; ?>
 
-                    <div class="status-pill <?= e($statusClass) ?>">
-                        <?= e($statusText) ?>
-                    </div>
+                    
+				<div class="status-pill <?= e($statusClass) ?>">
+						<?php if ($statusClass === 'meeting' && !empty($meetingIcon)): ?>
+						<img
+						src="<?= e($settingUploadUrl . $meetingIcon) ?>"
+						alt="Meeting"
+						style="
+						width:28px;
+						height:28px;
+						object-fit:contain;
+						margin-right:10px;
+						vertical-align:middle;
+						">
+						<?php endif; ?>
+
+						<?= e($statusText) ?>
+				</div>
                 </div>
             </div>
 
             <div class="location">
-                <h2>Meeting Room</h2>
+                <h2>The Cattle Hub</h2>
                 <p>
                     Jl. Laswi No.104-108, Cibangkong, Kec. Batununggal, Kota Bandung, Jawa Barat 40273.
                 </p>
@@ -472,7 +504,7 @@ body::before {
 			<img
 			src="<?= e($settingUploadUrl . $bookNowImage) ?>"
 			alt="Book Now"
-			style="max-height:120px;max-width:380px;object-fit:contain;">
+			class="book-now-img">
 
 			<?php else: ?>
 
@@ -533,8 +565,28 @@ body::before {
 
                             <div>
                                 <div class="item-title">
-                                    <?= e($s['title'] ?? 'Meeting') ?>
-                                </div>
+									<?= e($s['organizer_name'] ?? 'Penyelenggara') ?>
+
+									<?php if (($s['organizer_status'] ?? '') === 'internal'): ?>
+									<span style="
+										background:#16a34a;
+										color:white;
+										padding:5px 12px;
+										border-radius:999px;
+										font-size:16px;
+										margin-left:8px;
+										">Internal</span>
+									<?php elseif (($s['organizer_status'] ?? '') === 'external'): ?>
+									<span style="
+										background:#f59e0b;
+										color:#111;
+										padding:5px 12px;
+										border-radius:999px;
+										font-size:16px;
+										margin-left:8px;
+										">External</span>
+									<?php endif; ?>
+								</div>
 
                                 <div class="item-time">
                                     <?= substr($s['start_time'],0,5) ?>
@@ -565,13 +617,20 @@ body::before {
 </div>
 
 <script>
+/*
+|--------------------------------------------------------------------------
+| CLOCK
+|--------------------------------------------------------------------------
+*/
 function updateClock() {
+
     const now = new Date();
 
     const h = String(now.getHours()).padStart(2, '0');
     const m = String(now.getMinutes()).padStart(2, '0');
 
-    document.getElementById('clock').innerText = h + ':' + m;
+    document.getElementById('clock').innerText =
+        h + ':' + m;
 
     const bulan = [
         'Januari','Februari','Maret','April',
@@ -586,12 +645,288 @@ function updateClock() {
 }
 
 updateClock();
+
 setInterval(updateClock, 1000);
 
+/*
+|--------------------------------------------------------------------------
+| AUTO REFRESH
+|--------------------------------------------------------------------------
+*/
 setInterval(function () {
     window.location.reload();
 }, 60000);
-</script>
 
+/*
+|--------------------------------------------------------------------------
+| COUNTDOWN UI
+|--------------------------------------------------------------------------
+*/
+const countdownHtml = `
+<div id="meetingCountdown" style="
+    position: fixed;
+    top: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: transparent;
+    backdrop-filter: none;
+    color: white;
+    padding: 18px 28px;
+    border-radius: 18px;
+    z-index: 99999;
+    display: none;
+    min-width: 360px;
+    text-align:center;
+    box-shadow: none;
+">
+
+    <div
+        id="countdownTitle"
+        style="
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            text-shadow: 0 2px 8px rgba(0,0,0,.75);
+        ">
+        Meeting
+    </div>
+
+    <div
+        id="countdownTime"
+        style="
+            font-size: 48px;
+            font-weight: 900;
+            line-height: 1;
+            text-shadow: 0 2px 8px rgba(0,0,0,.75);
+        ">
+        00:00
+    </div>
+
+</div>
+`;
+
+document.body.insertAdjacentHTML(
+    'beforeend',
+    countdownHtml
+);
+
+const schedules = <?= json_encode($schedules); ?>;
+
+const countdownBox =
+    document.getElementById('meetingCountdown');
+
+const countdownTitle =
+    document.getElementById('countdownTitle');
+
+const countdownTime =
+    document.getElementById('countdownTime');
+
+/*
+|--------------------------------------------------------------------------
+| SOUND SYSTEM
+|--------------------------------------------------------------------------
+*/
+function playMeetingSound(type = 'start') {
+
+    <?php if (!empty($meetingSoundFile)): ?>
+
+    const audio = new Audio(
+        "<?= BASE_URL ?>/uploads/settings/<?= e($meetingSoundFile) ?>"
+    );
+
+    audio.volume = 1;
+
+    audio.loop = false;
+	audio.currentTime = 0;
+
+	audio.play().catch(function(err){
+    console.log('Audio blocked:', err);
+	});
+
+    <?php else: ?>
+
+    const ctx =
+        new (window.AudioContext || window.webkitAudioContext)();
+
+    const oscillator = ctx.createOscillator();
+
+    const gainNode = ctx.createGain();
+
+    oscillator.connect(gainNode);
+
+    gainNode.connect(ctx.destination);
+
+    oscillator.type = 'sine';
+
+    oscillator.frequency.value =
+        type === 'start' ? 950 : 500;
+
+    gainNode.gain.setValueAtTime(
+        0.3,
+        ctx.currentTime
+    );
+
+    oscillator.start();
+
+    oscillator.stop(ctx.currentTime + 1);
+
+    <?php endif; ?>
+}
+
+/*
+|--------------------------------------------------------------------------
+| TIME PARSER
+|--------------------------------------------------------------------------
+*/
+function parseTimeToDate(timeString) {
+
+    const now = new Date();
+
+    const parts = timeString.split(':');
+
+    return new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        parts[0],
+        parts[1],
+        parts[2] || 0
+    );
+}
+
+function formatCountdown(ms) {
+
+    const totalSeconds =
+        Math.floor(ms / 1000);
+
+    const minutes = String(
+        Math.floor(totalSeconds / 60)
+    ).padStart(2, '0');
+
+    const seconds = String(
+        totalSeconds % 60
+    ).padStart(2, '0');
+
+    return minutes + ':' + seconds;
+}
+
+/*
+|--------------------------------------------------------------------------
+| MAIN COUNTDOWN SYSTEM
+|--------------------------------------------------------------------------
+*/
+function updateMeetingCountdown() {
+
+    const now = new Date();
+
+    let found = false;
+
+    schedules.forEach(schedule => {
+
+        if (schedule.status !== 'approved') {
+            return;
+        }
+
+        const start =
+            parseTimeToDate(schedule.start_time);
+
+        const end =
+            parseTimeToDate(schedule.end_time);
+
+        const beforeStart =
+            new Date(start.getTime() - (5 * 60 * 1000));
+
+        const afterEnd =
+            new Date(end.getTime() + (5 * 60 * 1000));
+
+        /*
+        |--------------------------------------------------------------------------
+        | 5 MENIT SEBELUM
+        |--------------------------------------------------------------------------
+        */
+        if (now >= beforeStart && now < start) {
+
+            found = true;
+
+            countdownBox.style.display = 'block';
+
+            countdownTitle.innerHTML =
+                'Meeting dimulai dalam';
+
+            countdownTime.innerHTML =
+                formatCountdown(start - now);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | MEETING BERLANGSUNG
+        |--------------------------------------------------------------------------
+        */
+        else if (now >= start && now <= end) {
+
+            found = true;
+
+            countdownBox.style.display = 'block';
+
+            countdownTitle.innerHTML =
+                'Meeting berlangsung';
+
+            countdownTime.innerHTML =
+                formatCountdown(end - now);
+
+            const startKey =
+                'meeting_started_' + schedule.id;
+
+            if (!localStorage.getItem(startKey)) {
+				console.log('START MEETING SOUND');
+
+                <?php if ($meetingStartSound == '1'): ?>
+                playMeetingSound('start');
+                <?php endif; ?>
+
+                localStorage.setItem(startKey, '1');
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | 5 MENIT SETELAH
+        |--------------------------------------------------------------------------
+        */
+        else if (now > end && now <= afterEnd) {
+
+            found = true;
+
+            countdownBox.style.display = 'block';
+
+            countdownTitle.innerHTML =
+                'Meeting selesai • jeda ruangan';
+
+            countdownTime.innerHTML =
+                formatCountdown(afterEnd - now);
+
+            const endKey =
+                'meeting_finished_' + schedule.id;
+
+            if (!localStorage.getItem(endKey)) {
+
+                <?php if ($meetingEndSound == '1'): ?>
+                playMeetingSound('end');
+                <?php endif; ?>
+
+                localStorage.setItem(endKey, '1');
+            }
+        }
+    });
+
+    if (!found) {
+        countdownBox.style.display = 'none';
+    }
+}
+
+updateMeetingCountdown();
+
+setInterval(updateMeetingCountdown, 1000);
+</script>
 </body>
 </html>

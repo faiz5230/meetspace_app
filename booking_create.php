@@ -11,10 +11,12 @@ $rooms = $pdo->query("
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $roomId      = $_POST['room_id'];
+	$title 		 = $_POST['title'];
     $bookingDate = $_POST['booking_date'];
     $startTime   = $_POST['start_time'];
     $endTime     = $_POST['end_time'];
-    $title       = $_POST['title'];
+	$organizerName      = $_POST['organizer_name'];
+	$organizerStatus    = $_POST['organizer_status'];
     $description = $_POST['description'];
     $attendees   = $_POST['attendees'];
 
@@ -65,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             AND b.booking_date = ?
             AND b.status IN ('pending', 'approved')
             AND (
-                TIME(?) < ADDTIME(b.end_time, '00:30:00')
+                TIME(?) < ADDTIME(b.end_time, '00:10:00')
                 AND
                 TIME(?) > b.start_time
             )
@@ -89,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($conf) {
 
             $err =
-                'Booking ditolak karena jadwal bentrok atau masih dalam jeda 30 menit setelah pemakaian ruangan.<br><br>' .
+                'Booking ditolak karena jadwal bentrok atau masih dalam jeda 10 menit setelah pemakaian ruangan.<br><br>' .
                 '<b>Booking aktif:</b><br>' .
                 e($conf['room_name']) . '<br>' .
                 substr($conf['start_time'], 0, 5) .
@@ -107,20 +109,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 INSERT INTO bookings (
                     user_id,
                     room_id,
-                    title,
+					title,
+					organizer_name,
+					organizer_status,
                     description,
                     booking_date,
                     start_time,
                     end_time,
                     attendees
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
 
             $stmt->execute([
                 $me['id'],
                 $roomId,
-                $title,
+				$title,
+				$organizerName,
+				$organizerStatus,
                 $description,
                 $bookingDate,
                 $startTime,
@@ -151,7 +157,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             | REDIRECT
             |--------------------------------------------------------------------------
             */
-            redirect('my_bookings.php');
+            if ($me['role'] === 'admin') {
+			redirect(BASE_URL . '/admin/bookings.php');
+			} else {
+			redirect(BASE_URL . '/my_bookings.php');
+			}
         }
     }
 }
@@ -279,19 +289,31 @@ const BASE_URL_JS = "<?= BASE_URL ?>";
                     required>
 
             </div>
+			<div class="col-12">
+				<label class="form-label">
+				Judul
+				</label>
 
-            <div class="col-12">
+				<input
+					class="form-control"
+					name="title"
+					required>
+			</div>
+			<div class="mb-3">
+				<label class="form-label">Nama Penyelenggara</label>
+				<input type="text" name="organizer_name" class="form-control" required>
+			</div>
+			
+			<div class="mb-3">
+				<label class="form-label">Status Penyelenggara</label>
+				<select name="organizer_status" class="form-select" required>
+					<option value="">Pilih Status</option>
+					<option value="internal">Internal</option>
+					<option value="external">External</option>
+				</select>
 
-                <label class="form-label">
-                    Judul
-                </label>
-
-                <input
-                    class="form-control"
-                    name="title"
-                    required>
-
-            </div>
+				<div id="statusBadgePreview" class="mt-2"></div>
+			</div>
 
             <div class="col-12">
 
@@ -424,6 +446,30 @@ bookingDateInput.addEventListener('change', validateRealtimeBooking);
 startTimeInput.addEventListener('change', validateRealtimeBooking);
 
 endTimeInput.addEventListener('change', validateRealtimeBooking);
+</script>
+
+
+<script>
+const organizerStatus = document.querySelector('[name="organizer_status"]');
+const statusBadgePreview = document.getElementById('statusBadgePreview');
+
+organizerStatus.addEventListener('change', function () {
+
+    if (this.value === 'internal') {
+
+        statusBadgePreview.innerHTML =
+            '<span class="badge bg-success">Internal</span>';
+
+    } else if (this.value === 'external') {
+
+        statusBadgePreview.innerHTML =
+            '<span class="badge bg-warning text-dark">External</span>';
+
+    } else {
+
+        statusBadgePreview.innerHTML = '';
+    }
+});
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
