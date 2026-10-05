@@ -35,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     save_setting('meeting_start_sound', $meetingStartSound);
     save_setting('meeting_end_sound', $meetingEndSound);
     save_setting('app_name', $_POST['app_name']);
+	save_setting('qr_link', $_POST['qr_link']);
 
     if (!empty($_FILES['public_logo']['name'])) {
         $ext = strtolower(pathinfo($_FILES['public_logo']['name'], PATHINFO_EXTENSION));
@@ -111,6 +112,7 @@ $logo = get_setting('public_logo');
 $background = get_setting('public_background');
 $bookNowImage = get_setting('book_now_image');
 $meetingSoundFile = get_setting('meeting_sound_file');
+$qrLink = get_setting('qr_link', 'https://api.whatsapp.com/send/?phone=6281122262555&text=Halo%2C+saya+mau+booking+ruang+meeting+&type=phone_number&app_absent=0');
 
 $rooms = $pdo->query("SELECT * FROM rooms ORDER BY name")->fetchAll();
 ?>
@@ -241,7 +243,11 @@ $rooms = $pdo->query("SELECT * FROM rooms ORDER BY name")->fetchAll();
                     </div>
                 <?php endif; ?>
             </div>
-
+			<div class="col-md-12">
+                <label class="form-label">Link QR Code (Scan Here)</label>
+                <input class="form-control" type="text" name="qr_link" value="<?= e($qrLink) ?>" placeholder="https://wa.me/62812xxxxxxx atau link booking lainnya">
+                <small class="text-muted">Link ini akan otomatis diubah jadi QR code di dashboard public. Bisa diisi link WhatsApp, link booking online, atau link lainnya.</small>
+            </div>
             <div class="col-12">
                 <button class="btn btn-success">Simpan Setting</button>
             </div>

@@ -1,0 +1,11 @@
+# Konfigurasi sensitif
+.env
+config/app.php
+config/database.php
+meetspace_db.sql
+uploads/*
+!uploads/.gitkeep
+/vendor/
+index_backup.php
+index_backup2.php
+*.log

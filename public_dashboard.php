@@ -97,7 +97,7 @@ if ($room['status'] === 'closed') {
     $statusClass = 'meeting';
 }
 
-$qrLink = 'http://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/login.php';
+$qrLink = get_public_setting('qr_link', 'https://api.whatsapp.com/send/?phone=6281122262555&text=Halo%2C+saya+mau+booking+ruang+meeting+&type=phone_number&app_absent=0');
 
 $qrImage = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' . urlencode($qrLink);
 
@@ -163,7 +163,7 @@ body::before {
 .page {
     width: 100vw;
     height: 100vh;
-    padding: 55px 65px;
+    padding: 30px 65px;
     display: grid;
     grid-template-columns: 58% 42%;
     gap: 45px;
@@ -174,7 +174,8 @@ body::before {
 .left {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
+    position: relative;
 }
 
 .logo {
@@ -191,7 +192,7 @@ body::before {
 }
 
 .room-title {
-    margin-top: 70px;
+    margin-top: 25px;
 }
 
 .room-title h1 {
@@ -211,9 +212,9 @@ body::before {
 }
 
 .status-pill {
-    padding: 10px 25px;
+    padding: 8px 18px;
     border-radius: 999px;
-    font-size: 28px;
+    font-size: 19px;
     font-weight: 700;
 }
 
@@ -234,24 +235,25 @@ body::before {
 }
 
 .location h2 {
-    margin: 0 0 12px;
-    font-size: 42px;
+    margin: 0 0 8px;
+    font-size: 32px;
     font-weight: 900;
 }
 
 .location p {
     margin: 0;
-    font-size: 25px;
-    line-height: 1.45;
-    max-width: 860px;
+    font-size: 19px;
+    line-height: 1.4;
+sudo nano /var/www/html/meetspace_app/public_dashboard.php    max-width: 860px;
 }
 
 .bottom {
- display: flex;
- align-items: flex-start;
- justify-content: flex-start;
- gap: 10px;
- margin-top: 10px;
+ margin-top: auto;
+    padding-bottom: 20px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 10px;
 }
 
 .book-btn {
@@ -280,26 +282,58 @@ body::before {
     font-size: 42px;
 }
 
-.qr-box {
- background: #fff;
- padding: 10px 10px 7px;
- border-radius: 0px;
- color: #111;
- text-align: center;
- font-weight: 900;
- font-size: 13px;
- line-height: 1;
- border: 3px solid rgba(0,0,0,.18);
- box-shadow: 0 4px 10px rgba(0,0,0,.12);
- overflow: hidden;
-}
-
 .qr-box img {
  width: 135px;
  height: 135px;
  display: block;
  margin: 0 auto 5px;
  object-fit: contain;
+}
+
+.qr-popup-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.6);
+    z-index: 999998;
+    align-items: center;
+    justify-content: center;
+}
+
+.qr-popup-overlay.show {
+    display: flex;
+}
+
+.qr-popup-overlay .qr-box {
+    position: relative;
+    overflow: visible;
+    width: 420px;
+    padding: 20px 20px 12px;
+}
+
+.qr-popup-overlay .qr-box img {
+    width: 380px;
+    height: 380px;
+}
+
+.qr-close-btn {
+    position: absolute;
+    top: -14px;
+    right: -14px;
+    width: 28px;
+    height: 28px;
+    background: #ff3333;
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,.3);
+    line-height: 1;
+	padding-bottom: 3px;
 }
 
 .right {
@@ -311,10 +345,10 @@ body::before {
 
 .panel {
  width: 100%;
- max-width: 620px;
+ max-width: 780px;
  background: rgba(255,255,255,.82);
  color: #111;
- height: calc(100vh - 110px);
+ height: calc(100vh - 61px);
  min-height: unset;
  display: flex;
  flex-direction: column;
@@ -341,6 +375,9 @@ body::before {
 .schedule {
  padding: 22px 30px;
  flex: 1;
+ overflow-y: auto;
+ max-height: calc(100vh - 200px);
+ scroll-behavior: smooth;
 }
 
 .item {
@@ -435,6 +472,9 @@ body::before {
  object-fit: contain;
  margin-left: -50px;
 }
+#meetingCountdown {
+    display: none !important;
+}
 </style>
 </head>
 
@@ -465,10 +505,8 @@ body::before {
                             <?= substr($currentBooking['end_time'],0,5) ?>
                         </div>
                     <?php else: ?>
-                        <div>Ready</div>
                     <?php endif; ?>
 
-                    
 				<div class="status-pill <?= e($statusClass) ?>">
 						<?php if ($statusClass === 'meeting' && !empty($meetingIcon)): ?>
 						<img
@@ -483,7 +521,7 @@ body::before {
 						">
 						<?php endif; ?>
 
-						<?= e($statusText) ?>
+						<span id="statusPillText"><?= e($statusText) ?></span>
 				</div>
                 </div>
             </div>
@@ -504,23 +542,26 @@ body::before {
 			<img
 			src="<?= e($settingUploadUrl . $bookNowImage) ?>"
 			alt="Book Now"
-			class="book-now-img">
+			class="book-now-img"
+			onclick="showQRPopup()"
+			style="cursor:pointer;">
 
 			<?php else: ?>
 
-			<div class="book-btn">
+			<div class="book-btn" onclick="showQRPopup()" style="cursor:pointer;">
 				BOOK NOW
 			<span>›</span>
 			</div>
 
 			<?php endif; ?>
-
-            <div class="qr-box">
-                <img src="<?= e($qrImage) ?>" alt="QR Booking">
-                SCAN HERE
-            </div>
-
-        </div>
+		</div>
+		<div id="qrPopupOverlay" class="qr-popup-overlay" onclick="hideQRPopup()">
+			<div class="qr-box" onclick="event.stopPropagation()">
+			<span class="qr-close-btn" onclick="hideQRPopup()">&times;</span>
+			<img src="<?= e($qrImage) ?>" alt="QR Booking">
+			SCAN HERE
+			</div>
+		</div>
 
     </div>
 
@@ -534,7 +575,7 @@ body::before {
             </div>
 
             <div class="schedule">
-
+                <?php $doneCount = 0; ?>
                 <?php if ($schedules): ?>
 
                     <?php foreach ($schedules as $s): ?>
@@ -550,6 +591,12 @@ body::before {
                             $now > $s['end_time'];
 
                         $itemClass = $isActive ? 'active' : ($isDone ? 'done' : '');
+                        if ($isDone) {
+                           $doneCount++;
+                           // Hitung total done
+                           $totalDone = count(array_filter($schedules, fn($x) => $x['status'] === 'approved' && $now > $x['end_time']));
+                        if ($doneCount < $totalDone) continue; // skip semua done kecuali yang terakhir
+                                     }
 
                         if ($isActive) {
                             $label = '<span class="running">Berlangsung</span>';
@@ -720,6 +767,36 @@ const countdownTitle =
 
 const countdownTime =
     document.getElementById('countdownTime');
+    let qrPopupTimeout = null;
+
+function showQRPopup() {
+    const overlay = document.getElementById('qrPopupOverlay');
+    overlay.classList.add('show');
+
+    if (qrPopupTimeout) {
+        clearTimeout(qrPopupTimeout);
+    }
+
+    qrPopupTimeout = setTimeout(function () {
+        overlay.classList.remove('show');
+    }, 60000);
+}
+
+function hideQRPopup() {
+    const overlay = document.getElementById('qrPopupOverlay');
+    overlay.classList.remove('show');
+
+    if (qrPopupTimeout) {
+        clearTimeout(qrPopupTimeout);
+        qrPopupTimeout = null;
+    }
+}
+
+const statusPillText =
+    document.getElementById('statusPillText');
+
+const originalStatusText =
+    statusPillText ? statusPillText.innerText : '';
 
 /*
 |--------------------------------------------------------------------------
@@ -736,12 +813,17 @@ function playMeetingSound(type = 'start') {
 
     audio.volume = 1;
 
-    audio.loop = false;
+    audio.loop = true;
 	audio.currentTime = 0;
 
 	audio.play().catch(function(err){
     console.log('Audio blocked:', err);
 	});
+
+	setTimeout(function () {
+	    audio.pause();
+	    audio.currentTime = 0;
+	}, 30000);
 
     <?php else: ?>
 
@@ -768,7 +850,7 @@ function playMeetingSound(type = 'start') {
 
     oscillator.start();
 
-    oscillator.stop(ctx.currentTime + 1);
+    oscillator.stop(ctx.currentTime + 30);
 
     <?php endif; ?>
 }
@@ -820,6 +902,9 @@ function updateMeetingCountdown() {
     const now = new Date();
 
     let found = false;
+	if (statusPillText) {
+        statusPillText.innerText = originalStatusText;
+    }
 
     schedules.forEach(schedule => {
 
@@ -873,6 +958,10 @@ function updateMeetingCountdown() {
 
             countdownTime.innerHTML =
                 formatCountdown(end - now);
+				if (statusPillText) {
+                statusPillText.innerText =
+                    originalStatusText + ' | ' + formatCountdown(end - now);
+				}
 
             const startKey =
                 'meeting_started_' + schedule.id;
@@ -927,6 +1016,43 @@ function updateMeetingCountdown() {
 updateMeetingCountdown();
 
 setInterval(updateMeetingCountdown, 1000);
+/*
+|--------------------------------------------------------------------------
+| AUTO SCROLL JADWAL
+|--------------------------------------------------------------------------
+*/
+(function() {
+    const schedule = document.querySelector('.schedule');
+    if (!schedule) return;
+
+    let scrollInterval = null;
+    let resetTimeout = null;
+
+    function startScroll() {
+        scrollInterval = setInterval(function() {
+            // Kalau sudah sampai bawah, stop scroll
+            if (schedule.scrollTop + schedule.clientHeight >= schedule.scrollHeight - 5) {
+                clearInterval(scrollInterval);
+                scrollInterval = null;
+
+                // Tunggu 30 detik lalu balik ke atas
+                resetTimeout = setTimeout(function() {
+                    schedule.scrollTo({ top: 0, behavior: 'smooth' });
+                    // Mulai scroll lagi setelah kembali ke atas
+                    setTimeout(startScroll, 1500);
+                }, 30000);
+            } else {
+                schedule.scrollTop += 1;
+            }
+        }, 30);
+    }
+
+    // Mulai scroll otomatis hanya kalau item lebih dari 3
+    const scheduleItems = schedule.querySelectorAll('.item');
+    if (scheduleItems.length > 3) {
+        setTimeout(startScroll, 3000);
+    }
+})();
 </script>
 </body>
 </html>
